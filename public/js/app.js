@@ -61,21 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
 
-
-    // Fetch the membeship type names
-    const tenantID = document.getElementById('tenant-id').value;
-    fetch('/membershipTypes', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ tenantID })
-    })
-        .then(response => response.json())
-        .then(async responseData => {
-            membershipTypesData = responseData.data
-        })
-
     // Trigger download
     document.getElementById('download-csv').addEventListener('click', function () {
         table.download('csv', 'data.csv');
@@ -143,38 +128,10 @@ document.getElementById('fetch-btn').addEventListener('click', () => {
         .then(response => response.json())
         .then(async jobsData => {
             const jobsArray = jobsData.data
-
-
-            // Fetch customer membership data
-            const membershipPromises = jobsArray.map(job => {
-                return fetch('/memberships', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ customerId: job.customerId, tenantID })
-                })
-                    .then(response => response.json())
-                    .then(membershipsData => {
-                        job.membershipData = membershipsData.data // Add the membership data to the object
-
-                        job.hasActiveMembership = job.membershipData.some(each => each.status === 'active') // Check if there is an active membership
-
-                        return job;
-                    });
-            });
-
-            // Wait for all membership data to be fetched
-            const jobsWithMembershipData = await Promise.all(membershipPromises);
-
-            // Filter out jobs with active membership data
-            const nonMembershipJobs = jobsWithMembershipData.filter(job => !job.hasActiveMembership); // Filter out jobs without an active membership
-
-
-            //console.log(nonMembershipJobs)
+            //console.log(jobsArray)
 
             // Fetch customer name, address, job location, and total cost data for each job from the invoices endpoint
-            const invoicePromises = nonMembershipJobs.map(job => {
+            const invoicePromises = jobsArray.map(job => {
                 return fetch('/invoices', {
                     method: 'POST',
                     headers: {
@@ -230,7 +187,7 @@ document.getElementById('fetch-btn').addEventListener('click', () => {
 
             // Wait for all customer data to be fetched
             const jobsWithCustomerData = await Promise.all(customerPromises);
-            //console.log(jobsWithCustomerData)
+            console.log(jobsWithCustomerData)
 
             // Put data into table
             table.setData(jobsWithCustomerData);

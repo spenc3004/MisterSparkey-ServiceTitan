@@ -1,12 +1,14 @@
 const express = require('express');
 const app = express();
-const PORT = 3000;
+const PORT = 3001;
 require('dotenv').config();
 const appKey = process.env.APP_KEY;
+const cookieParser = require('cookie-parser');
 
 
 app.use(express.static('public'));
 app.use(express.json()); //middleware to pull json out of the request
+app.use(cookieParser());
 
 
 app.post('/login', async (req, res) => {
@@ -14,7 +16,7 @@ app.post('/login', async (req, res) => {
     const clientId = req.body.clientId;
     const clientSecret = req.body.clientSecret;
 
-    const url = "https://auth-integration.servicetitan.io/connect/token";
+    const url = "https://auth.servicetitan.io/connect/token";
     const params = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -63,7 +65,12 @@ app.post('/jobs', async (req, res) => {
     const startDate = req.body.startDate;
     const endDate = req.body.endDate;
     const tenantID = req.body.tenantID;
-    const accessToken = req.headers.cookie.split('=')[1];
+    const accessToken = req.cookies.access_token;
+
+    if (!accessToken) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+    }
 
     let allJobs = [];
     let page = 1;
@@ -72,11 +79,11 @@ app.post('/jobs', async (req, res) => {
     try {
         while (hasMore) {
             const fetchPromises = [];
-            const batchSize = 5; // Number of pages to fetch concurrently
+            const batchSize = 15; // Number of pages to fetch concurrently
 
             // Create an array of promises to fetch a batch of pages concurrently
             for (let i = 0; i < batchSize; i++) {
-                const url = `https://api-integration.servicetitan.io/jpm/v2/tenant/${tenantID}/jobs?jobStatus=Completed&page=${page + i}&completedOnOrAfter=${startDate}&completedBefore=${endDate}`;
+                const url = `https://api.servicetitan.io/jpm/v2/tenant/${tenantID}/jobs?jobStatus=Completed&page=${page + i}&completedOnOrAfter=${startDate}&completedBefore=${endDate}`;
                 fetchPromises.push(fetch(url, {
                     method: 'GET',
                     headers: {
@@ -125,10 +132,15 @@ app.post('/invoices', async (req, res) => {
     // #region POST /invoices
     const invoiceId = req.body.invoiceId;
     const tenantID = req.body.tenantID;
-    const accessToken = req.headers.cookie.split('=')[1];
+    const accessToken = req.cookies.access_token;
+
+    if (!accessToken) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+    }
 
     try {
-        const invoiceUrl = `https://api-integration.servicetitan.io/accounting/v2/tenant/${tenantID}/invoices?ids=${invoiceId}`;
+        const invoiceUrl = `https://api.servicetitan.io/accounting/v2/tenant/${tenantID}/invoices?ids=${invoiceId}`;
         const response = await fetch(invoiceUrl, {
             method: 'GET',
             headers: {
@@ -158,10 +170,15 @@ app.post('/customers', async (req, res) => {
     // #region POST /customers
     const customerId = req.body.customerId;
     const tenantID = req.body.tenantID;
-    const accessToken = req.headers.cookie.split('=')[1];
+    const accessToken = req.cookies.access_token;
+
+    if (!accessToken) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+    }
 
     try {
-        const customerUrl = `https://api-integration.servicetitan.io/crm/v2/tenant/${tenantID}/customers/?ids=${customerId}`;
+        const customerUrl = `https://api.servicetitan.io/crm/v2/tenant/${tenantID}/customers/?ids=${customerId}`;
         const response = await fetch(customerUrl, {
             method: 'GET',
             headers: {
@@ -186,81 +203,7 @@ app.post('/customers', async (req, res) => {
     }
     // #endregion
 });
-/*
-app.post('/membershipTypes', async (req, res) => {
-    // #region POST /membershipTypes
-    const tenantId = req.body.tenantID;
-    const accessToken = req.headers.cookie.split('=')[1];
 
-    try {
-        const url = `https://api-integration.servicetitan.io/memberships/v2/tenant/${tenantId}/membership-types`;
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': accessToken,
-                'ST-App-Key': appKey
-            }
-        });
-
-        if (response.status === 401) {
-            throw new Error('Unauthorized');
-        }
-
-        const membershipTypesData = await response.json();
-        res.json({ data: membershipTypesData.data });
-    } catch (error) {
-        console.error('Error fetching membership types:', error);
-        if (error.message === 'Unauthorized') {
-            res.status(401).json({ message: 'Unauthorized' });
-        } else {
-            res.status(500).json({ message: 'Internal Server Error' });
-        }
-    }
-    // #endregion
-});
-
-app.post('/memberships', async (req, res) => {
-    // #region POST /memberships
-    const tenantId = req.body.tenantID;
-    const customerId = req.body.customerId
-    const accessToken = req.headers.cookie.split('=')[1];
-
-    try {
-        const membershipTypesUrl = `https://api-integration.servicetitan.io/memberships/v2/tenant/${tenantId}/memberships/?customerIds=${customerId}`;
-        const response = await fetch(membershipTypesUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': accessToken,
-                'ST-App-Key': appKey
-            }
-        });
-
-        if (response.status === 401) {
-            throw new Error('Unauthorized');
-        }
-
-        const membershipsData = await response.json();
-
-        //Handeling customers who have never had a membership as it will return empty
-        if (!membershipsData.data || membershipsData.data.length === 0) {
-            return res.json({
-                data: [{ status: 'N/A', membershipTypeId: 'N/A' }]
-            });
-        }
-
-        res.json({ data: membershipsData.data });
-    } catch (error) {
-        console.error('Error fetching memberships:', error);
-        if (error.message === 'Unauthorized') {
-            res.status(401).json({ message: 'Unauthorized' });
-        } else {
-            res.status(500).json({ message: 'Internal Server Error' });
-        }
-    }
-    // #endregion
-});
-
-*/
 
 app.listen(PORT, () => {
     console.log(`Server is running on port http://localhost:${PORT}`);
