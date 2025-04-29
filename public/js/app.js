@@ -4,7 +4,7 @@ let table;
  * Shows or hides the login page
  * @param {boolean} visible - Show or hide the login page
  */
-let membershipTypesData = []
+
 function setLogin(visible) {
     // #region Show/Hide Login
     const login = document.getElementById('login-area');
@@ -18,6 +18,9 @@ function setLogin(visible) {
     }
     // #endregion
 }
+
+let tagTypesData = []
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // #region page loaded
@@ -59,6 +62,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
             ] //create columns from data field names
         });
+
+
+
+    // Fetch tags
+    const tenantID = document.getElementById('tenant-id').value;
+    fetch('/tags', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tenantID: tenantID })
+    })
+        .then(response => response.json())
+        .then(async data => {
+            tagTypesData = data.data
+            console.log(tagTypesData)
+            // Populate the select element with options
+            const selectElement = document.getElementById('tag-type');
+
+            selectElement.innerHTML = ''; // Clear existing options
+
+            tagTypesData.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.id;
+                option.textContent = tag.name;
+                selectElement.appendChild(option);
+            });
+
+            NiceSelect.bind(selectElement), { searchable: true };
+            document.getElementById('tags').style.display = 'flex';
+
+        })
+        .catch(error => {
+            console.error('Error fetching tags:', error);
+        });
+
+
 
 
     // Trigger download
