@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pagination: 'local',
             paginationSize: 15,
             columns: [
+                { title: 'Tags', field: 'tags', visible: false },
                 { title: 'Job ID', field: 'id' },
                 { title: 'Job Status', field: 'jobStatus' },
                 { title: 'Completed Date', field: 'completedDate' },
@@ -60,8 +61,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 { title: 'Do Not Mail', field: 'doNotMail' }
 
 
+
+
             ] //create columns from data field names
         });
+
+    function applyMultiSelectFilter() {
+        const selectedTags = Array.from(document.querySelectorAll('#tag-type option:checked'))
+            .map(option => Number(option.value));
+        //console.log(selectedTags)
+
+        const isExcludeMode = document.getElementById('exclude-tags-toggle').checked;
+
+        if (selectedTags.length > 0) {
+            table.setFilter(function (rowData) {
+                const rowTags = rowData.tags;
+
+                return isExcludeMode ? selectedTags.every(tag => !rowTags.includes(tag)) : selectedTags.some(tag => rowTags.includes(tag))
+            }
+            );
+        } else {
+            table.clearFilter();
+        }
+    }
+
+    // Add event listener to the select element
+    const selectElement = document.getElementById('tag-type');
+    selectElement.addEventListener('change', function () {
+        applyMultiSelectFilter();
+    });
+
+    // Add event listener to the exclude tags toggle
+    document.getElementById('exclude-tags-toggle').addEventListener('change', function () {
+        applyMultiSelectFilter();
+    });
+
 
 
 
@@ -77,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => response.json())
         .then(async data => {
             tagTypesData = data.data
-            console.log(tagTypesData)
+            //console.log(tagTypesData)
             // Populate the select element with options
             const selectElement = document.getElementById('tag-type');
 
@@ -90,8 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectElement.appendChild(option);
             });
 
-            NiceSelect.bind(selectElement), { searchable: true };
-            document.getElementById('tags').style.display = 'flex';
+            NiceSelect.bind(selectElement, { searchable: true });
+
 
         })
         .catch(error => {
@@ -134,9 +168,6 @@ document.getElementById('login-btn').addEventListener('click', () => {
             setLogin(false);
             response.json()
         })
-        .then(data => {
-            console.log(data);
-        });
 
     // #endregion
 }
@@ -221,18 +252,33 @@ document.getElementById('fetch-btn').addEventListener('click', () => {
                         job.customerData = customerData.data.data[0]; // Add customer data to the job object
                         job.customerType = job.customerData.type // Set and add customer type to job object
                         job.doNotMail = job.customerData.doNotMail // Set and add if the customeris on the do not mail list to the job object
+
                         return job;
                     });
             });
 
             // Wait for all customer data to be fetched
             const jobsWithCustomerData = await Promise.all(customerPromises);
-            console.log(jobsWithCustomerData)
+            //console.log(jobsWithCustomerData)
+
+            const jobsWithTags = jobsWithCustomerData.map(job => {
+                tagIds = []
+                // Loop through the tags and add them to the job object
+                job.tagTypeIds.forEach(tag => {
+                    tagIds.push(tag)
+                })
+                // Remove duplicates from the tagIds array
+                job.tagTypeIds = [...new Set(tagIds)]
+
+                job.tags = tagIds // Set and add the tags to the job object
+                return job;
+            });
 
             // Put data into table
-            table.setData(jobsWithCustomerData);
+            table.setData(jobsWithTags);
 
             // Hide loading spinner
+            document.getElementById('tags').style.display = 'flex';
             document.getElementById('loading-spinner').style.display = 'none';
             document.getElementById('download-csv').disabled = false
         })
