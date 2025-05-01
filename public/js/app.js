@@ -42,11 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
             pagination: 'local',
             paginationSize: 15,
             columns: [
-                { title: 'Tags', field: 'tags', visible: false },
                 { title: 'Job ID', field: 'id' },
                 { title: 'Job Status', field: 'jobStatus' },
                 { title: 'Completed Date', field: 'completedDate' },
                 { title: 'Job Location Street', field: 'locationStreet' },
+                { title: 'Tags', field: 'tags' },//, visible: false
                 { title: 'Job Location City', field: 'locationCity' },
                 { title: 'Job Location State', field: 'locationState' },
                 { title: 'Job Location Zip', field: 'locationZip' },
@@ -71,13 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
             .map(option => Number(option.value));
         //console.log(selectedTags)
 
-        const isExcludeMode = document.getElementById('exclude-tags-toggle').checked;
-
+        const isIncludeMode = document.getElementById('include-tags-toggle').checked;
+        //  if the include-tags-toggle is toggled on it will show only jobs with the selected tags if not it excludes any jobs with the selected tags
         if (selectedTags.length > 0) {
             table.setFilter(function (rowData) {
                 const rowTags = rowData.tags;
 
-                return isExcludeMode ? selectedTags.every(tag => !rowTags.includes(tag)) : selectedTags.some(tag => rowTags.includes(tag))
+                return isIncludeMode ? selectedTags.some(tag => rowTags.includes(tag)) : selectedTags.every(tag => !rowTags.includes(tag))
             }
             );
         } else {
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Add event listener to the exclude tags toggle
-    document.getElementById('exclude-tags-toggle').addEventListener('change', function () {
+    document.getElementById('include-tags-toggle').addEventListener('change', function () {
         applyMultiSelectFilter();
     });
 
@@ -199,67 +199,79 @@ document.getElementById('fetch-btn').addEventListener('click', () => {
         .then(response => response.json())
         .then(async jobsData => {
             const jobsArray = jobsData.data
+            const invoiceIds = jobsArray.map(job => job.invoiceId) // Get all job ids from the jobs array
+            const customerIds = jobsArray.map(job => job.customerId) // Get all customer ids from the jobs array
             //console.log(jobsArray)
+            //console.log(invoiceIds)
+            //console.log(customerIds)
 
             // Fetch customer name, address, job location, and total cost data for each job from the invoices endpoint
-            const invoicePromises = jobsArray.map(job => {
-                return fetch('/invoices', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ invoiceId: job.invoiceId, tenantID })
-                })
-                    .then(response => response.json())
-                    .then(invoiceData => {
-                        job.completedDate = new Date(job.completedOn).toISOString().split("T")[0] // Format completedOn to remove timestamp
-
-                        job.invoice = invoiceData.data[0] // Add the invoice object to the job object
-                        job.cost = job.invoice.total; // Add invoice total to the job object
-                        job.name = job.invoice.customer.name // Set and add name from invoice data to the job object
-                        const customerAddress = job.invoice.customerAddress // Set customerAddress to the customer address in invoice
-                        // Add address fields for customer to job object
-                        job.customerStreet = customerAddress.street
-                        job.customerCity = customerAddress.city
-                        job.customerState = customerAddress.state
-                        job.customerZip = customerAddress.zip
-                        const address = job.invoice.locationAddress // Set address to the locationAddress object from the invoice
-                        // Add location address fields to job location
-                        job.locationStreet = address.street
-                        job.locationCity = address.city
-                        job.locationState = address.state
-                        job.locationZip = address.zip
-                        return job;
-                    });
+            const invoiceResponse = await fetch('/invoices', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ invoiceIds, tenantID })
+            });
+            const invoiceData = await invoiceResponse.json();
+            const invoiceMap = new Map();
+            invoiceData.data.forEach(invoice => {
+                invoiceMap.set(invoice.id, invoice);
             });
 
-            // Wait for all invoice data to be fetched
-            const jobsWithInvoiceData = await Promise.all(invoicePromises);
+            const jobsWithInvoiceData = jobsArray.map(job => {
+                // Find the invoice data for the current job
+                const invoice = invoiceMap.get(job.invoiceId)
+                if (invoice) {
+                    job.completedDate = new Date(job.completedOn).toISOString().split("T")[0] // Format completedOn to remove timestamp
+                    job.cost = invoice.total; // Add invoice total to the job object
+                    job.name = invoice.customer.name // Set and add name from invoice data to the job object
+                    const customerAddress = invoice.customerAddress // Set customerAddress to the customer address in invoice
+                    // Add address fields for customer to job object
+                    job.customerStreet = customerAddress.street
+                    job.customerCity = customerAddress.city
+                    job.customerState = customerAddress.state
+                    job.customerZip = customerAddress.zip
+                    const address = invoice.locationAddress // Set address to the locationAddress object from the invoice
+                    // Add location address fields to job location
+                    job.locationStreet = address.street
+                    job.locationCity = address.city
+                    job.locationState = address.state
+                    job.locationZip = address.zip
+
+                }
+                return job;
+            }
+            );
             //console.log(jobsWithInvoiceData)
 
-
-            // Fetch customer type and do not mail
-            const customerPromises = jobsWithInvoiceData.map(job => {
-                return fetch('/customers', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ customerId: job.customerId, tenantID })
-                })
-                    .then(response => response.json())
-                    .then(customerData => {
-                        job.customerData = customerData.data.data[0]; // Add customer data to the job object
-                        job.customerType = job.customerData.type // Set and add customer type to job object
-                        job.doNotMail = job.customerData.doNotMail // Set and add if the customeris on the do not mail list to the job object
-
-                        return job;
-                    });
+            const customerResponse = await fetch('/customers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ customerIds, tenantID })
+            });
+            const customerData = await customerResponse.json();
+            const customerMap = new Map();
+            customerData.data.forEach(customer => {
+                customerMap.set(customer.id, customer);
             });
 
-            // Wait for all customer data to be fetched
-            const jobsWithCustomerData = await Promise.all(customerPromises);
+            const jobsWithCustomerData = jobsWithInvoiceData.map(job => {
+                // Find the customer data for the current job
+                const customer = customerMap.get(job.customerId)
+                if (customer) {
+                    job.customerData = customer; // Add customer data to the job object
+                    job.customerType = customer.type // Set and add customer type to job object
+                    job.doNotMail = customer.doNotMail // Set and add if the customeris on the do not mail list to the job object
+                }
+                return job;
+            }
+            );
             //console.log(jobsWithCustomerData)
+
+
 
             const jobsWithTags = jobsWithCustomerData.map(job => {
                 tagIds = []

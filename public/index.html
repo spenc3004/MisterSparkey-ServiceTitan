@@ -14,7 +14,7 @@
 
 <body>
     <h3>Welcome to the ServiceTitan App Mister Sparky Edition</h3>
-    <p>This returns all of the completed jobs between the starts and end date and allows you to exclude jobs from
+    <p>This returns all of the completed jobs between the starts and end date and allows you to filter jobs from
         the table based on the
         tags.</p>
     <div id="login-area">
@@ -46,11 +46,12 @@
 
         <button id="fetch-btn">Get</button><button id="download-csv">Download CSV</button>
         <div id="tags" style="display:none;">
-            <select id="tag-type" multiple> </select> <label class="switch"><input type="checkbox"
-                    id="exclude-tags-toggle">
+            <select id="tag-type" multiple> </select>
+            <span margin-right: 10 px>Exclude Selected Tags</span>
+            <label class="switch"><input type="checkbox" id="include-tags-toggle">
                 <span class="slider round"></span>
             </label>
-            <span margin-left: 10px>Exclude Selected Tags</span>
+            <span margin-left: 10px>Include Selected Tags</span>
         </div>
 
         <div id="table">
