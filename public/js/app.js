@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
     // Add event listener to the select element
     const selectElement = document.getElementById('tag-type');
     selectElement.addEventListener('change', function () {
@@ -95,9 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('include-tags-toggle').addEventListener('change', function () {
         applyMultiSelectFilter();
     });
-
-
-
 
     // Fetch tags
     const tenantID = document.getElementById('tenant-id').value;
@@ -301,3 +299,5 @@ document.getElementById('fetch-btn').addEventListener('click', () => {
         });
     // #endregion
 });
+
+

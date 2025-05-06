@@ -51,7 +51,7 @@ app.post('/login', async (req, res) => {
 
 app.get('/authenticate', (req, res) => {
     // #region GET /authenticate
-    const accessToken = req.headers.cookie;
+    const accessToken = req.cookies.access_token;
     if (!accessToken) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
