@@ -12,4 +12,6 @@ Getting started:
 
   5. Select a start and end date an click get to retrieve the completed jobs between those two dates.
 
+  6. Use the drop down to select tags and toggle switch to filter inclusion/exclusion of completed jobs with the selected tags.
+
 Congrats now you have a list of information about those completed jobs that you can use (ethically and responsibly).
