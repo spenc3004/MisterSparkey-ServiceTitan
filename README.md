@@ -8,7 +8,7 @@ Getting started:
 
   3. Inside the directory terminal run "npm run start" and then open the local host link.
 
-  4. Then using your tenant ID, client ID, and Client Secret login.
+  4. Then using your Tenant ID, Client ID, and Client Secret login.
 
   5. Select a start and end date an click get to retrieve the completed jobs between those two dates.
 
